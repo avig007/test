@@ -8,7 +8,7 @@
 <body>
   <h2>Survey Form</h2>
 
-  <form id="surveyForm" action="#" method="POST" enctype="multipart/form-data">
+  <form id="surveyForm" enctype="multipart/form-data">
     
     <!-- Question 1 -->
     <fieldset>
@@ -36,5 +36,28 @@
     <button type="submit">Submit</button>
   </form>
 
+  <script>
+    const form = document.getElementById('surveyForm');
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const formData = new FormData(form);
+
+      // Change this URL to your deployed Apps Script URL
+      const GAS_URL = 'YOUR_DEPLOYED_WEB_APP_URL_HERE';
+
+      try {
+        const res = await fetch(GAS_URL, {
+          method: 'POST',
+          body: formData,
+        });
+        const text = await res.text();
+        alert(text === "Success" ? "Form submitted successfully!" : text);
+        if(text === "Success") form.reset();
+      } catch (err) {
+        alert("Error submitting form: " + err.message);
+      }
+    });
+  </script>
 </body>
 </html>
