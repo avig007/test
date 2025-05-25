@@ -2,70 +2,75 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Upload Images to Google Drive</title>
 </head>
 <body>
-  <h1>Upload up to 10 images</h1>
-  <form id="uploadForm">
-    <input type="file" id="images" name="images" accept="image/*" multiple required />
-    <br /><br />
-    <button type="submit">Upload to Drive</button>
-  </form>
+  <h2>Upload up to 10 Images to Google Drive</h2>
 
-  <script>
-    const GAS_URL = 'https://script.google.com/macros/s/AKfycbxV7gRFrbe_IhEpY_X2Rnxc4rR6v3EantNWLANBxqEoNv7Oolaf3FLwY_aOPhzhaN3RXA/exec'; // <-- replace this!
+  <label for="folderLabel">Subfolder name (optional): </label>
+  <input type="text" id="folderLabel" placeholder="e.g. Vacation2025" />
 
-    const form = document.getElementById('uploadForm');
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const files = document.getElementById('images').files;
+  <br /><br />
 
-      if (files.length === 0) {
-        alert('Please select at least one image.');
-        return;
-      }
-      if (files.length > 10) {
-        alert('Please select no more than 10 images.');
-        return;
-      }
+  <input type="file" id="fileInput" accept="image/*" multiple />
+  <br /><br />
+  <button id="uploadBtn">Upload Files</button>
 
-      // Read files as base64 and prepare payload
-      const filesData = [];
-      for (const file of files) {
-        const base64 = await new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(reader.result.split(',')[1]);
-          reader.onerror = reject;
-          reader.readAsDataURL(file);
-        });
+  <h3>Upload Results:</h3>
+  <pre id="results"></pre>
 
-        filesData.push({
-          name: file.name,
-          mimeType: file.type,
-          data: base64,
-        });
-      }
+<script>
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbyAmqE1eFXWvCyFaJBqvx5DoYyxvZl9dfYjrJ5wkZvkEwMU2tHtEinf8PC08VL3fV5qHg/exec';  // <<<<< REPLACE THIS
 
-      const payload = { files: filesData };
+document.getElementById('uploadBtn').addEventListener('click', async () => {
+  const input = document.getElementById('fileInput');
+  const folderLabel = document.getElementById('folderLabel').value.trim() || 'default';
 
-      try {
-        const response = await fetch(GAS_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          mode: 'cors', 
-          body: JSON.stringify(payload),
-        });
+  if (!input.files.length) {
+    alert('Please select at least one file.');
+    return;
+  }
 
-        const text = await response.text();
-        alert(text === "Success" ? "Upload successful!" : `Upload failed: ${text}`);
-        if (text === "Success") form.reset();
-      } catch (err) {
-        alert('Error: ' + err.message);
-      }
+  if (input.files.length > 10) {
+    alert('Please select up to 10 files.');
+    return;
+  }
+
+  const files = Array.from(input.files);
+
+  const filesData = await Promise.all(files.map(file => toBase64(file).then(data => ({
+    name: file.name,
+    mimeType: file.type,
+    data: data
+  }))));
+
+  try {
+    const response = await fetch(GAS_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ files: filesData, folderLabel: folderLabel }),
+      mode: 'cors'
     });
-  </script>
+
+    if (!response.ok) throw new Error(`Server error: ${response.statusText}`);
+
+    const json = await response.json();
+    document.getElementById('results').textContent = JSON.stringify(json, null, 2);
+  } catch (err) {
+    document.getElementById('results').textContent = 'Upload failed: ' + err.message;
+  }
+});
+
+function toBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+</script>
+
 </body>
 </html>
-
-
-
